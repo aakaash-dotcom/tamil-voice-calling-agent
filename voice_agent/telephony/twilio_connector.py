@@ -1,27 +1,20 @@
 """
 voice_agent.telephony.twilio_connector — Twilio Voice + WhatsApp integration.
 
-Two call flows:
+INBOUND flow:
+    1. Twilio webhook → /twilio/voice/inbound
+    2. Respond with TwiML <Connect><Stream> pointing to our WebSocket
+    3. Twilio opens bidirectional WebSocket to /twilio/stream
+    4. Caller audio (mulaw 8kHz) → STT → LLM → TTS → send back
 
-INBOUND (caller dials Twilio number):
-    1. Twilio webhook → our /voice/inbound endpoint
-    2. We respond with a TwiML <Connect><Stream> pointing to our WebSocket
-    3. Twilio opens a bidirectional WebSocket to /twilio/stream
-    4. We receive caller audio (mulaw 8kHz) → STT → LLM → TTS → send back
-    5. Barge-in: when we detect caller audio while we're speaking, we stop
-       sending audio chunks and switch back to listening mode.
-
-OUTBOUND (we dial a lead):
-    1. We POST to Twilio Calls API with TwiML that connects to our WebSocket
+OUTBOUND flow:
+    1. POST to Twilio Calls API with TwiML connecting to our WebSocket
     2. Same WebSocket streaming flow as inbound
 
 Audio format conversion:
     - Twilio stream: 8kHz mulaw (G.711 µ-law), 20ms chunks (160 samples)
     - Whisper wants: 16kHz float32 mono
-    - We use a simple resampler + mulaw decode/encode (audioop)
-
-For <600ms latency in production we'd want to use the Twilio Media Streams
-extension with the newer <Connect><Stream> TwiML and bidirectional audio.
+    - Pure NumPy & audioop-lts fallback (Python 3.10 to 3.14+ compatible)
 """
 from __future__ import annotations
 
@@ -30,14 +23,6 @@ import base64
 import io
 import json
 import logging
-# Safe audioop fallback for Python 3.10 to 3.14+
-try:
-    import audioop
-except ImportError:
-    try:
-        import audioop_lts as audioop
-    except ImportError:
-        audioop = None
 from functools import lru_cache
 from typing import AsyncIterator
 
@@ -47,15 +32,36 @@ from ..config import get_settings
 
 logger = logging.getLogger(__name__)
 
+# Safe audioop fallback for Python 3.10 to 3.14+
+try:
+    import audioop
+except ImportError:
+    try:
+        import audioop_lts as audioop
+    except ImportError:
+        audioop = None
+
 
 # ----------------------------------------------------------------------------
 # MULAW <-> LINEAR conversion (G.711 µ-law, the standard for PSTN)
 # ----------------------------------------------------------------------------
 def mulaw_to_linear(mulaw_bytes: bytes, sample_rate: int = 8000) -> np.ndarray:
     """Convert 8kHz mulaw bytes → 16kHz float32 numpy array."""
-    # audioop.ulaw2lin expects ulaw input and returns 16-bit signed linear PCM
-    linear_16bit = audioop.ulaw2lin(mulaw_bytes, 2)
-    arr = np.frombuffer(linear_16bit, dtype=np.int16).astype(np.float32) / 32768.0
+    if audioop is not None:
+        linear_16bit = audioop.ulaw2lin(mulaw_bytes, 2)
+        arr = np.frombuffer(linear_16bit, dtype=np.int16).astype(np.float32) / 32768.0
+    else:
+        # Pure NumPy G.711 mu-law decoding (zero external dependencies)
+        u = np.frombuffer(mulaw_bytes, dtype=np.uint8)
+        u = ~u
+        sign = (u & 0x80)
+        exponent = (u & 0x70) >> 4
+        mantissa = (u & 0x0F)
+        sample = ((mantissa << 3) + 132) << exponent
+        sample -= 132
+        sample = np.where(sign != 0, -sample, sample)
+        arr = (sample / 32768.0).astype(np.float32)
+
     # Upsample 8kHz → 16kHz (linear interpolation)
     if sample_rate == 8000:
         arr_up = np.interp(
@@ -75,8 +81,23 @@ def linear_to_mulaw(audio: np.ndarray, in_sample_rate: int = 16000) -> bytes:
     # Clip and convert to 16-bit PCM
     audio_clipped = np.clip(audio, -1.0, 1.0)
     audio_16bit = (audio_clipped * 32767).astype(np.int16)
-    # PCM 16-bit → mulaw
-    return audioop.lin2ulaw(audio_16bit.tobytes(), 2)
+
+    if audioop is not None:
+        return audioop.lin2ulaw(audio_16bit.tobytes(), 2)
+    else:
+        # Pure NumPy G.711 mu-law encoding (zero external dependencies)
+        samples = audio_16bit.astype(np.int32)
+        sign = (samples >> 8) & 0x80
+        samples = np.where(samples < 0, -samples, samples)
+        samples = np.clip(samples + 132, 0, 32767)
+
+        exp = np.zeros_like(samples, dtype=np.uint8)
+        for i in range(7, 0, -1):
+            exp = np.where((samples >= (1 << (i + 7))) & (exp == 0), i, exp)
+
+        mantissa = (samples >> (exp + 3)) & 0x0F
+        mulaw = ~(sign | (exp << 4) | mantissa).astype(np.uint8)
+        return mulaw.tobytes()
 
 
 # ----------------------------------------------------------------------------
