@@ -30,7 +30,14 @@ import base64
 import io
 import json
 import logging
-import audioop
+# Safe audioop fallback for Python 3.10 to 3.14+
+try:
+    import audioop
+except ImportError:
+    try:
+        import audioop_lts as audioop
+    except ImportError:
+        audioop = None
 from functools import lru_cache
 from typing import AsyncIterator
 
