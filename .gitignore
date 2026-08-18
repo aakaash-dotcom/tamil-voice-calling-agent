@@ -1,0 +1,81 @@
+# ============================================================================
+# Voice Agent — .gitignore
+# ============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# --- Virtual Environments (NEVER commit these — 500MB+) ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Environment Secrets (NEVER commit — contains API keys) ---
+.env
+.env.local
+.env.production
+.env.*.local
+
+# --- Database (regenerate from schema) ---
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+voice_agent.db
+
+# --- Audio / Recordings (large, regenerable) ---
+download/recordings/
+download/*.mp3
+download/*.wav
+download/*.mp4
+download/benchmark_results.json
+
+# --- Model caches (large, auto-downloaded) ---
+*.bin
+*.pt
+*.onnx
+*.gguf
+models/
+.whisper-cache/
+huggingface-cache/
+
+# --- IDE / Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- OS ---
+.DS_Store
+*.DS_Store
+
+# --- Logs ---
+*.log
+logs/
+
+# --- ngrok ---
+ngrok*
+*.ngrok.io
+
+# --- Local config overrides ---
+config.local.*
+
+# --- Keep these (don't ignore) ---
+!requirements.txt
+!.env.example
+!assets/*.pdf

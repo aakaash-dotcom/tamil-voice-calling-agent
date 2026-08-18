@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamil Voice Agent — Dashboard</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --accent: #f59e0b;
+      --hot: #dc2626;
+      --warm: #f59e0b;
+      --cold: #6b7280;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 0;
+    }
+    .nav {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .nav h1 { font-size: 1.25rem; font-weight: 700; }
+    .nav .stats { display: flex; gap: 1.5rem; font-size: 0.875rem; }
+    .nav .stats span { font-weight: 600; }
+    .container { max-width: 1280px; margin: 2rem auto; padding: 0 2rem; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card);
+      padding: 1.25rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      border-left: 4px solid var(--primary);
+    }
+    .stat-card.hot { border-left-color: var(--hot); }
+    .stat-card.warm { border-left-color: var(--warm); }
+    .stat-card.cold { border-left-color: var(--cold); }
+    .stat-card .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-card .value { font-size: 1.75rem; font-weight: 700; margin-top: 0.25rem; }
+    .card {
+      background: var(--card);
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .card-header a {
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+    tr:hover { background: #f9fafb; }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.hot { background: #fee2e2; color: #991b1b; }
+    .badge.warm { background: #fef3c7; color: #92400e; }
+    .badge.cold { background: #f3f4f6; color: #374151; }
+    .badge.inbound { background: #dbeafe; color: #1e40af; }
+    .badge.outbound { background: #ede9fe; color: #5b21b6; }
+    .badge.active { background: #d1fae5; color: #065f46; }
+    .badge.completed { background: #f3f4f6; color: #374151; }
+    .badge.tuition { background: #fce7f3; color: #9d174d; }
+    .badge.pg { background: #ecfeff; color: #155e75; }
+    a.call-link { color: var(--primary); text-decoration: none; font-weight: 500; }
+    a.call-link:hover { text-decoration: underline; }
+    .empty { padding: 2rem; text-align: center; color: var(--muted); }
+    .actions { display: flex; gap: 0.5rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: var(--primary);
+      color: white;
+      text-decoration: none;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <h1>📞 Tamil Voice Agent Dashboard</h1>
+    <div class="stats">
+      <span>{{ business_mode | upper }} mode</span>
+      {% if business_mode == 'shared' or business_mode == 'tuition' %}
+        <span>{{ tuition_name }}</span>
+      {% endif %}
+      {% if business_mode == 'shared' or business_mode == 'pg' %}
+        <span>{{ pg_name }}</span>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">Total Calls</div>
+        <div class="value">{{ total_calls }}</div>
+      </div>
+      <div class="stat-card hot">
+        <div class="label">Hot Leads</div>
+        <div class="value">{{ stats.get('hot', 0) }}</div>
+      </div>
+      <div class="stat-card warm">
+        <div class="label">Warm Leads</div>
+        <div class="value">{{ stats.get('warm', 0) }}</div>
+      </div>
+      <div class="stat-card cold">
+        <div class="label">Cold Leads</div>
+        <div class="value">{{ stats.get('cold', 0) }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h2>Recent Calls</h2>
+        <div class="actions">
+          <a href="/bookings" class="btn">📚 View Bookings</a>
+        </div>
+      </div>
+      {% if calls %}
+      <table>
+        <thead>
+          <tr>
+            <th>Call SID</th>
+            <th>Direction</th>
+            <th>Business</th>
+            <th>Phone</th>
+            <th>Started</th>
+            <th>Duration</th>
+            <th>Lead</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in calls %}
+          <tr>
+            <td><a class="call-link" href="/call/{{ c.call_sid }}">{{ c.call_sid[:16] }}…</a></td>
+            <td><span class="badge {{ c.direction }}">{{ c.direction }}</span></td>
+            <td><span class="badge {{ c.business }}">{{ c.business }}</span></td>
+            <td>{{ c.phone_number }}</td>
+            <td>{{ c.started_at[:19].replace('T', ' ') }}</td>
+            <td>{{ c.duration_seconds or '-' }}s</td>
+            <td>
+              <span class="badge {{ c.lead_status }}">{{ c.lead_status }} ({{ c.lead_score }})</span>
+            </td>
+            <td><span class="badge {{ c.status }}">{{ c.status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty">
+        No calls yet. Use the push-to-talk CLI or trigger a Twilio call to see data here.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>
