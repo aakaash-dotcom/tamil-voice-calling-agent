@@ -1,43 +1,21 @@
-# ============================================================================
-# Voice Agent — Core Dependencies
-# ============================================================================
-# Python 3.10+ required
+# --- Core Server & Dashboard ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+jinja2>=3.1.2
+python-multipart>=0.0.9
+pydantic>=2.7.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.0
+aiofiles>=23.2.0
+httpx>=0.27.0
+structlog>=24.1.0
 
-# --- STT (Speech-to-Text) ---
-faster-whisper==1.0.3          # CTranslate2 Whisper, streaming-capable, Tamil support
-ctranslate2==4.4.0             # pinned for faster-whisper compatibility
+# --- Speech & AI Engine ---
+edge-tts>=6.1.10
+groq>=0.9.0
+faster-whisper>=1.0.0
+reportlab>=4.0.0
 
-# --- TTS (Text-to-Speech) ---
-edge-tts==6.1.12               # Microsoft Edge TTS, free Tamil voices (Pallavi/Valluvar)
-
-# --- LLM (Reasoning Brain) ---
-groq==0.11.0                   # Groq Cloud SDK — Llama-3.3-70B, ~100ms TTFT
-
-# --- Telephony + WhatsApp ---
-twilio==9.3.2                  # Twilio Voice (SIP/PSTN) + WhatsApp Business API
-fastapi==0.115.0               # Webhook server for Twilio + dashboard
-uvicorn[standard]==0.30.6      # ASGI server
-python-multipart==0.0.9        # Form parsing for Twilio webhooks
-jinja2==3.1.4                  # Dashboard templates
-
-# --- Local Audio (push-to-talk test runner) ---
-sounddevice==0.4.7             # Cross-platform mic/speaker I/O (PortAudio binding)
-numpy==1.26.4                  # Audio buffer manipulation
-
-# --- VAD (Voice Activity Detection for barge-in) ---
-webrtcvad==2.0.10              # Google WebRTC VAD, ultra-fast
-
-# --- HTTP / Async ---
-httpx==0.27.2                  # Async HTTP for tool calls
-aiofiles==24.1.0               # Async file I/O for recordings
-
-# --- Database ---
-# sqlite3 is in Python stdlib — no extra dependency
-
-# --- Config / Utilities ---
-python-dotenv==1.0.1           # .env loading
-pydantic==2.9.2                # Settings validation
-pydantic-settings==2.5.2       # Settings management
-
-# --- Logging / Observability ---
-structlog==24.4.0              # Structured JSON logging
+# --- Telephony & Utilities ---
+twilio>=9.0.0
+numpy>=1.24.0
